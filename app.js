@@ -541,6 +541,7 @@ async function saveRecord() {
     // 5. Show success
     showSuccess(patientId);
     showToast('Record saved successfully!', 'success');
+    updateDashboardStats();
   } catch (err) {
     hideLoading();
     console.error('Save error:', err);
@@ -784,6 +785,43 @@ async function loadRecentRecords() {
   }
 }
 
+// ── Welcome Banner ──
+function updateWelcomeDate() {
+  const now = new Date();
+  const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+  const dateStr = now.toLocaleDateString('en-IN', options);
+  const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  const el = $('#welcome-date');
+  if (el) el.textContent = `${dateStr} • ${timeStr}`;
+}
+
+async function updateDashboardStats() {
+  if (!state.supabaseClient) {
+    $('#stat-total').textContent = '—';
+    $('#stat-today').textContent = '—';
+    return;
+  }
+
+  try {
+    // Total records
+    const { count: total } = await state.supabaseClient
+      .from('patients')
+      .select('*', { count: 'exact', head: true });
+    $('#stat-total').textContent = total ?? 0;
+
+    // Today's records
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const { count: todayCount } = await state.supabaseClient
+      .from('patients')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', todayStart.toISOString());
+    $('#stat-today').textContent = todayCount ?? 0;
+  } catch (err) {
+    console.error('Stats error:', err);
+  }
+}
+
 // ── Init ──
 document.addEventListener('DOMContentLoaded', () => {
   const connected = initSupabase();
@@ -796,6 +834,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Welcome banner
+  updateWelcomeDate();
+  setInterval(updateWelcomeDate, 60000); // Update time every minute
+
+  // Dashboard stats
+  updateDashboardStats();
+
   // Start at step 1
   goToStep(1);
 });
+
