@@ -3,431 +3,290 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Patel Dental Clinic — RVG Image Management System. Upload, manage, and retrieve dental RVG images with voice-powered patient data entry." />
+  <meta name="description" content="Patel Dental Clinic — RVG Image Management System" />
   <title>Patel Dental Clinic — RVG Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
-  <!-- Supabase JS Client via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
-  <!-- ══════════════ HEADER ══════════════ -->
-  <header class="app-header">
-    <div class="header-content">
-      <div class="logo-section">
-        <div class="logo-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2C9.5 2 7.5 3.5 7 5.5C6.5 7.5 5 8 4 8C2.5 8 1 9.5 1 11.5C1 14 3 16 5 18C7 20 9 22 12 22C15 22 17 20 19 18C21 16 23 14 23 11.5C23 9.5 21.5 8 20 8C19 8 17.5 7.5 17 5.5C16.5 3.5 14.5 2 12 2Z" fill="white" fill-opacity="0.95"/>
-            <path d="M9 10C9 10 10 14 12 14C14 14 15 10 15 10" stroke="rgba(20,184,166,0.8)" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- ═══ AMBIENT BACKGROUND ORBS ═══ -->
+  <div class="ambient-bg">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C9.5 2 7.5 3.5 7 5.5C6.5 7.5 5 8 4 8C2.5 8 1 9.5 1 11.5C1 14 3 16 5 18C7 20 9 22 12 22C15 22 17 20 19 18C21 16 23 14 23 11.5C23 9.5 21.5 8 20 8C19 8 17.5 7.5 17 5.5C16.5 3.5 14.5 2 12 2Z" fill="white"/>
           </svg>
         </div>
-        <div class="logo-text">
-          <h1>Patel Dental Clinic</h1>
-          <span>RVG Management System</span>
+        <div>
+          <div class="brand-name">Patel Dental Clinic</div>
+          <div class="brand-sub">RVG Management System</div>
         </div>
       </div>
-
-      <div class="header-actions">
-        <nav class="nav-tabs">
-          <button class="nav-tab active" data-view="new-record" id="tab-new-record">
-            <span class="tab-icon">➕</span> New Record
-          </button>
-          <button class="nav-tab" data-view="search" id="tab-search">
-            <span class="tab-icon">🔍</span> Find Patient
-          </button>
-        </nav>
-        <button class="btn btn-secondary" id="btn-settings" title="Supabase Settings">⚙️</button>
-      </div>
+      <nav class="nav-pills">
+        <button class="nav-pill active" data-view="new" id="nav-new">
+          <span>＋</span> New Record
+        </button>
+        <button class="nav-pill" data-view="search" id="nav-search">
+          <span>⌕</span> Find Patient
+        </button>
+      </nav>
+      <button class="icon-btn" id="btn-settings" title="Settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
     </div>
   </header>
 
-  <!-- ══════════════ WELCOME BANNER ══════════════ -->
-  <section class="welcome-banner">
-    <div class="welcome-content">
+  <!-- ═══ WELCOME STRIP ═══ -->
+  <section class="welcome-strip">
+    <div class="welcome-inner">
       <div class="welcome-left">
-        <div class="welcome-greeting">
-          <span class="greeting-wave">👋</span>
-          <div>
-            <h2>Welcome, <span>Dr. Nazneen</span></h2>
-            <p class="welcome-subtitle" id="welcome-date">Loading...</p>
-          </div>
+        <span class="wave">👋</span>
+        <div>
+          <h2 class="welcome-name">Welcome, <span>Dr. Nazneen</span></h2>
+          <p class="welcome-date" id="welcome-date"></p>
         </div>
       </div>
-      <div class="welcome-right">
-        <div class="stat-pill">
-          <span class="stat-icon">📋</span>
-          <div class="stat-info">
-            <span class="stat-value" id="stat-total">—</span>
-            <span class="stat-label">Total Records</span>
-          </div>
+      <div class="welcome-stats">
+        <div class="stat-chip">
+          <div class="stat-num" id="stat-total">–</div>
+          <div class="stat-lbl">Total</div>
         </div>
-        <div class="stat-pill">
-          <span class="stat-icon">📅</span>
-          <div class="stat-info">
-            <span class="stat-value" id="stat-today">—</span>
-            <span class="stat-label">Today</span>
-          </div>
+        <div class="stat-chip">
+          <div class="stat-num" id="stat-today">–</div>
+          <div class="stat-lbl">Today</div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ══════════════ MAIN CONTENT ══════════════ -->
-  <main class="main-container">
+  <!-- ═══ MAIN ═══ -->
+  <main class="main">
 
-    <!-- ──── NEW RECORD VIEW ──── -->
-    <section class="view-panel active" id="view-new-record">
+    <!-- ── NEW RECORD ── -->
+    <section class="view active" id="view-new">
 
-      <!-- Step Progress Bar -->
-      <div class="step-progress">
-        <div class="step-indicator active" data-step="1">
-          <div class="step-circle">1</div>
-          <span class="step-label">Upload</span>
-        </div>
-        <div class="step-connector" data-connector="1"></div>
-        <div class="step-indicator" data-step="2">
-          <div class="step-circle">2</div>
-          <span class="step-label">Name</span>
-        </div>
-        <div class="step-connector" data-connector="2"></div>
-        <div class="step-indicator" data-step="3">
-          <div class="step-circle">3</div>
-          <span class="step-label">Tooth #</span>
-        </div>
-        <div class="step-connector" data-connector="3"></div>
-        <div class="step-indicator" data-step="4">
-          <div class="step-circle">4</div>
-          <span class="step-label">Confirm</span>
-        </div>
+      <!-- Progress -->
+      <div class="progress-bar">
+        <div class="prog-step active" data-s="1"><div class="prog-dot">1</div><span>Upload</span></div>
+        <div class="prog-line" data-l="1"></div>
+        <div class="prog-step" data-s="2"><div class="prog-dot">2</div><span>Name</span></div>
+        <div class="prog-line" data-l="2"></div>
+        <div class="prog-step" data-s="3"><div class="prog-dot">3</div><span>Tooth</span></div>
+        <div class="prog-line" data-l="3"></div>
+        <div class="prog-step" data-s="4"><div class="prog-dot">4</div><span>Save</span></div>
       </div>
 
-      <!-- STEP 1: Upload RVG Image -->
-      <div class="step-panel active glass-card" id="step-1">
-        <h2 class="step-title">
-          <span class="icon">📤</span> Upload RVG Image
-        </h2>
-        <p class="step-subtitle">Drag and drop your RVG image or click to browse files</p>
-
-        <div class="upload-area" id="upload-area">
-          <input type="file" id="file-input" accept="image/*" />
-          <div class="upload-icon">🩻</div>
-          <div class="upload-text">
-            <h3>Drop RVG Image Here</h3>
-            <p>or <span class="browse-link">browse files</span></p>
-            <p style="margin-top:0.5rem; font-size:0.75rem;">Supports JPEG, PNG, BMP, TIFF</p>
+      <!-- Step 1 -->
+      <div class="card step active" id="s1">
+        <div class="card-head">
+          <h2>Upload RVG Image</h2>
+          <p>Drag & drop your radiograph or click to browse</p>
+        </div>
+        <div class="drop-zone" id="drop-zone">
+          <input type="file" id="file-input" accept="image/*" hidden />
+          <div class="drop-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <h3>Drop RVG image here</h3>
+          <p>or <span class="link">browse files</span> — JPEG, PNG, BMP, TIFF</p>
+        </div>
+        <div class="preview-box" id="preview-box">
+          <img id="preview-img" alt="RVG Preview" />
+          <div class="preview-info">
+            <span id="file-name-display"></span>
+            <button class="chip-btn danger" id="btn-remove">✕ Remove</button>
           </div>
         </div>
-
-        <div class="image-preview-container" id="image-preview-container">
-          <img id="image-preview" class="image-preview" alt="RVG Preview" />
-          <div class="image-info">
-            <div>
-              <span class="file-name" id="file-name"></span>
-              <span class="file-size" id="file-size"></span>
-            </div>
-            <button class="remove-image-btn" id="remove-image-btn">✕ Remove</button>
-          </div>
-        </div>
-
-        <div class="step-nav">
+        <div class="card-foot">
           <div></div>
-          <button class="btn btn-primary" id="btn-next-1" disabled>
-            Next: Patient Name <span class="btn-icon">→</span>
-          </button>
+          <button class="btn gold" id="next1" disabled>Next →</button>
         </div>
       </div>
 
-      <!-- STEP 2: Patient Name (Voice Input) -->
-      <div class="step-panel glass-card" id="step-2">
-        <h2 class="step-title">
-          <span class="icon">🎙️</span> Patient Name
-        </h2>
-        <p class="step-subtitle">Tap the microphone and speak the patient's name clearly</p>
-
-        <div class="voice-input-section">
-          <div class="mic-container">
-            <button class="mic-btn" id="mic-name" title="Click to start speaking">
-              🎤
-            </button>
-            <span class="mic-status" id="mic-name-status">Tap to speak</span>
-          </div>
-
-          <div class="transcript-display" id="name-display">
-            <span class="placeholder">Patient name will appear here...</span>
-          </div>
-
-          <div class="manual-input-section">
-            <button class="manual-toggle" id="manual-name-toggle">Or type manually ⌨️</button>
-            <div class="manual-input-wrapper" id="manual-name-wrapper">
-              <input type="text" class="manual-input" id="manual-name-input" placeholder="Type patient name..." />
-              <button class="manual-apply-btn" id="manual-name-apply">Apply</button>
-            </div>
-          </div>
+      <!-- Step 2 -->
+      <div class="card step" id="s2">
+        <div class="card-head">
+          <h2>Patient Name</h2>
+          <p>Tap the mic and say the patient's full name</p>
         </div>
-
-        <div class="step-nav">
-          <button class="btn btn-secondary" id="btn-back-2">
-            <span class="btn-icon">←</span> Back
+        <div class="voice-block">
+          <button class="mic-ring" id="mic-name" type="button">
+            <div class="mic-core">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </div>
           </button>
-          <button class="btn btn-primary" id="btn-next-2" disabled>
-            Next: Tooth Number <span class="btn-icon">→</span>
-          </button>
+          <div class="mic-label" id="mic-name-label">Tap to speak</div>
+        </div>
+        <div class="value-display" id="name-val">
+          <span class="placeholder-text">Name will appear here…</span>
+        </div>
+        <div class="fallback-row">
+          <input type="text" class="text-field" id="manual-name" placeholder="Or type name here…" />
+          <button class="btn outline small" id="apply-name">Apply</button>
+        </div>
+        <div class="card-foot">
+          <button class="btn ghost" id="back2">← Back</button>
+          <button class="btn gold" id="next2" disabled>Next →</button>
         </div>
       </div>
 
-      <!-- STEP 3: Tooth Number (Voice Input) -->
-      <div class="step-panel glass-card" id="step-3">
-        <h2 class="step-title">
-          <span class="icon">🦷</span> Tooth Number
-        </h2>
-        <p class="step-subtitle">Tap the microphone and speak the tooth number (FDI notation)</p>
-
-        <div class="voice-input-section">
-          <div class="mic-container">
-            <button class="mic-btn" id="mic-tooth" title="Click to start speaking">
-              🎤
-            </button>
-            <span class="mic-status" id="mic-tooth-status">Tap to speak</span>
-          </div>
-
-          <div class="transcript-display" id="tooth-display">
-            <span class="placeholder">Tooth number will appear here...</span>
-          </div>
-
-          <div class="manual-input-section">
-            <button class="manual-toggle" id="manual-tooth-toggle">Or type manually ⌨️</button>
-            <div class="manual-input-wrapper" id="manual-tooth-wrapper">
-              <input type="text" class="manual-input" id="manual-tooth-input" placeholder="e.g. 21, 36, 14..." />
-              <button class="manual-apply-btn" id="manual-tooth-apply">Apply</button>
+      <!-- Step 3 -->
+      <div class="card step" id="s3">
+        <div class="card-head">
+          <h2>Tooth Number</h2>
+          <p>Speak the tooth number or tap the chart below</p>
+        </div>
+        <div class="voice-block">
+          <button class="mic-ring" id="mic-tooth" type="button">
+            <div class="mic-core">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </div>
+          </button>
+          <div class="mic-label" id="mic-tooth-label">Tap to speak</div>
+        </div>
+        <div class="value-display" id="tooth-val">
+          <span class="placeholder-text">Tooth # will appear here…</span>
+        </div>
+        <div class="fallback-row">
+          <input type="text" class="text-field" id="manual-tooth" placeholder="Or type tooth # (e.g. 21)…" />
+          <button class="btn outline small" id="apply-tooth">Apply</button>
+        </div>
+        <!-- Tooth chart -->
+        <div class="tooth-chart-wrap">
+          <div class="chart-label">FDI Tooth Chart — tap to select</div>
+          <div class="chart-grid">
+            <div class="chart-row">
+              <span class="row-lbl">UR</span>
+              <div class="t" data-t="18">18</div><div class="t" data-t="17">17</div><div class="t" data-t="16">16</div><div class="t" data-t="15">15</div><div class="t" data-t="14">14</div><div class="t" data-t="13">13</div><div class="t" data-t="12">12</div><div class="t" data-t="11">11</div>
+              <div class="mid-line"></div>
+              <div class="t" data-t="21">21</div><div class="t" data-t="22">22</div><div class="t" data-t="23">23</div><div class="t" data-t="24">24</div><div class="t" data-t="25">25</div><div class="t" data-t="26">26</div><div class="t" data-t="27">27</div><div class="t" data-t="28">28</div>
+              <span class="row-lbl">UL</span>
+            </div>
+            <div class="jaw-line"></div>
+            <div class="chart-row">
+              <span class="row-lbl">LR</span>
+              <div class="t" data-t="48">48</div><div class="t" data-t="47">47</div><div class="t" data-t="46">46</div><div class="t" data-t="45">45</div><div class="t" data-t="44">44</div><div class="t" data-t="43">43</div><div class="t" data-t="42">42</div><div class="t" data-t="41">41</div>
+              <div class="mid-line"></div>
+              <div class="t" data-t="31">31</div><div class="t" data-t="32">32</div><div class="t" data-t="33">33</div><div class="t" data-t="34">34</div><div class="t" data-t="35">35</div><div class="t" data-t="36">36</div><div class="t" data-t="37">37</div><div class="t" data-t="38">38</div>
+              <span class="row-lbl">LL</span>
             </div>
           </div>
         </div>
-
-        <!-- Tooth Chart Reference -->
-        <div class="tooth-chart-section">
-          <h4>🦷 FDI Tooth Chart — Click to select</h4>
-          <div class="tooth-chart" id="tooth-chart">
-            <!-- Upper Right (18-11) -->
-            <div class="tooth-row">
-              <span class="tooth-row-label">Upper R</span>
-              <div class="tooth-num" data-tooth="18">18</div>
-              <div class="tooth-num" data-tooth="17">17</div>
-              <div class="tooth-num" data-tooth="16">16</div>
-              <div class="tooth-num" data-tooth="15">15</div>
-              <div class="tooth-num" data-tooth="14">14</div>
-              <div class="tooth-num" data-tooth="13">13</div>
-              <div class="tooth-num" data-tooth="12">12</div>
-              <div class="tooth-num" data-tooth="11">11</div>
-              <div class="tooth-divider"></div>
-              <div class="tooth-num" data-tooth="21">21</div>
-              <div class="tooth-num" data-tooth="22">22</div>
-              <div class="tooth-num" data-tooth="23">23</div>
-              <div class="tooth-num" data-tooth="24">24</div>
-              <div class="tooth-num" data-tooth="25">25</div>
-              <div class="tooth-num" data-tooth="26">26</div>
-              <div class="tooth-num" data-tooth="27">27</div>
-              <div class="tooth-num" data-tooth="28">28</div>
-              <span class="tooth-row-label" style="text-align:left;">Upper L</span>
-            </div>
-            <div class="jaw-separator"></div>
-            <!-- Lower Right (48-41) + Lower Left (31-38) -->
-            <div class="tooth-row">
-              <span class="tooth-row-label">Lower R</span>
-              <div class="tooth-num" data-tooth="48">48</div>
-              <div class="tooth-num" data-tooth="47">47</div>
-              <div class="tooth-num" data-tooth="46">46</div>
-              <div class="tooth-num" data-tooth="45">45</div>
-              <div class="tooth-num" data-tooth="44">44</div>
-              <div class="tooth-num" data-tooth="43">43</div>
-              <div class="tooth-num" data-tooth="42">42</div>
-              <div class="tooth-num" data-tooth="41">41</div>
-              <div class="tooth-divider"></div>
-              <div class="tooth-num" data-tooth="31">31</div>
-              <div class="tooth-num" data-tooth="32">32</div>
-              <div class="tooth-num" data-tooth="33">33</div>
-              <div class="tooth-num" data-tooth="34">34</div>
-              <div class="tooth-num" data-tooth="35">35</div>
-              <div class="tooth-num" data-tooth="36">36</div>
-              <div class="tooth-num" data-tooth="37">37</div>
-              <div class="tooth-num" data-tooth="38">38</div>
-              <span class="tooth-row-label" style="text-align:left;">Lower L</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="step-nav">
-          <button class="btn btn-secondary" id="btn-back-3">
-            <span class="btn-icon">←</span> Back
-          </button>
-          <button class="btn btn-primary" id="btn-next-3" disabled>
-            Next: Confirm <span class="btn-icon">→</span>
-          </button>
+        <div class="card-foot">
+          <button class="btn ghost" id="back3">← Back</button>
+          <button class="btn gold" id="next3" disabled>Next →</button>
         </div>
       </div>
 
-      <!-- STEP 4: Confirm & Save -->
-      <div class="step-panel glass-card" id="step-4">
-        <h2 class="step-title">
-          <span class="icon">✅</span> Confirm & Save
-        </h2>
-        <p class="step-subtitle">Review the details below and save the record</p>
-
-        <div class="confirm-card">
-          <img id="confirm-image" class="confirm-image-preview" alt="RVG Image" />
-
-          <div class="confirm-details">
-            <div class="confirm-field">
-              <div class="label">Patient Name</div>
-              <div class="value" id="confirm-name">—</div>
-            </div>
-            <div class="confirm-field">
-              <div class="label">Tooth Number</div>
-              <div class="value" id="confirm-tooth">—</div>
-            </div>
-            <div class="confirm-field full-width">
-              <div class="label">Date & Time</div>
-              <div class="value" id="confirm-datetime">—</div>
-            </div>
+      <!-- Step 4 -->
+      <div class="card step" id="s4">
+        <div class="card-head">
+          <h2>Confirm & Save</h2>
+          <p>Review the details and save the record</p>
+        </div>
+        <div class="confirm-grid">
+          <img id="confirm-img" class="confirm-image" alt="RVG" />
+          <div class="confirm-fields">
+            <div class="cf"><div class="cf-lbl">Patient Name</div><div class="cf-val" id="cf-name">—</div></div>
+            <div class="cf"><div class="cf-lbl">Tooth Number</div><div class="cf-val" id="cf-tooth">—</div></div>
+            <div class="cf"><div class="cf-lbl">Date & Time</div><div class="cf-val" id="cf-date">—</div></div>
           </div>
         </div>
-
-        <div class="step-nav">
-          <button class="btn btn-secondary" id="btn-back-4">
-            <span class="btn-icon">←</span> Back
-          </button>
-          <button class="btn btn-success" id="btn-save">
-            💾 Save Record
-          </button>
+        <div class="card-foot">
+          <button class="btn ghost" id="back4">← Back</button>
+          <button class="btn green" id="btn-save">💾 Save Record</button>
         </div>
       </div>
 
-      <!-- SUCCESS: Patient ID Generated -->
-      <div class="step-panel glass-card" id="step-success" style="display:none;">
-        <div class="success-screen">
-          <div class="success-icon-container">
-            <div class="success-icon">✓</div>
-          </div>
-          <h2 class="success-title">Record Saved Successfully!</h2>
-          <p class="success-subtitle">The patient record has been saved. Use the Patient ID below for future reference.</p>
-
-          <div class="patient-id-display">
-            <div class="patient-id-label">Patient ID</div>
-            <div class="patient-id-value" id="generated-patient-id">—</div>
-          </div>
-
+      <!-- Success -->
+      <div class="card step" id="s-success" style="display:none">
+        <div class="success-body">
+          <div class="success-check">✓</div>
+          <h2>Record Saved!</h2>
+          <p class="success-sub">Use this Patient ID for future reference</p>
+          <div class="id-badge"><div class="id-lbl">PATIENT ID</div><div class="id-val" id="gen-id">—</div></div>
           <div class="success-actions">
-            <button class="btn btn-primary" id="btn-copy-id">
-              📋 Copy ID
-            </button>
-            <button class="btn btn-secondary" id="btn-print-record">
-              🖨️ Print
-            </button>
-            <button class="btn btn-primary" id="btn-new-record">
-              ➕ New Record
-            </button>
+            <button class="btn outline" id="btn-copy">📋 Copy ID</button>
+            <button class="btn outline" id="btn-print">🖨 Print</button>
+            <button class="btn gold" id="btn-new">＋ New Record</button>
           </div>
         </div>
       </div>
-
     </section>
 
-    <!-- ──── SEARCH VIEW ──── -->
-    <section class="view-panel" id="view-search">
-      <div class="search-section">
-        <h2 class="step-title" style="margin-bottom:0.5rem;">
-          <span class="icon">🔍</span> Find Patient Record
-        </h2>
-        <p class="step-subtitle">Enter the Patient ID to retrieve the record</p>
-
-        <div class="search-box">
-          <input
-            type="text"
-            class="search-input"
-            id="search-input"
-            placeholder="Enter Patient ID (e.g. PDC-260825-0001)"
-            autocomplete="off"
-          />
-          <button class="btn btn-primary search-btn" id="btn-search">
-            🔍 Search
-          </button>
+    <!-- ── SEARCH ── -->
+    <section class="view" id="view-search">
+      <div class="search-wrap">
+        <h2 class="search-title">Find Patient Record</h2>
+        <p class="search-sub">Enter the Patient ID to retrieve the record</p>
+        <div class="search-bar">
+          <input type="text" class="text-field big" id="search-input" placeholder="e.g. PDC-260826-0001" />
+          <button class="btn gold" id="btn-search">Search</button>
         </div>
 
-        <!-- Search Result -->
-        <div class="patient-record glass-card" id="search-result">
-          <div class="record-header">
+        <!-- Result -->
+        <div class="card result-card" id="result-card" style="display:none">
+          <div class="result-head">
             <h3>Patient Record</h3>
-            <span class="record-id-badge" id="result-id-badge">—</span>
+            <span class="result-badge" id="res-badge">—</span>
           </div>
-          <img id="result-image" class="record-image" alt="RVG Image" />
-          <div class="record-details">
-            <div class="record-field">
-              <div class="label">Patient Name</div>
-              <div class="value" id="result-name">—</div>
-            </div>
-            <div class="record-field">
-              <div class="label">Tooth Number</div>
-              <div class="value" id="result-tooth">—</div>
-            </div>
-            <div class="record-field">
-              <div class="label">Patient ID</div>
-              <div class="value" id="result-patient-id">—</div>
-            </div>
-            <div class="record-field">
-              <div class="label">Date & Time</div>
-              <div class="value" id="result-datetime">—</div>
-            </div>
+          <img id="res-img" class="result-img" alt="RVG" />
+          <div class="result-fields">
+            <div class="cf"><div class="cf-lbl">Patient Name</div><div class="cf-val" id="res-name">—</div></div>
+            <div class="cf"><div class="cf-lbl">Tooth Number</div><div class="cf-val" id="res-tooth">—</div></div>
+            <div class="cf"><div class="cf-lbl">Patient ID</div><div class="cf-val" id="res-pid">—</div></div>
+            <div class="cf"><div class="cf-lbl">Date</div><div class="cf-val" id="res-date">—</div></div>
           </div>
-          <div class="record-actions">
-            <button class="btn btn-secondary" id="btn-print-result">🖨️ Print Record</button>
-          </div>
+          <button class="btn outline" id="btn-print-res" style="margin-top:1rem">🖨 Print Record</button>
         </div>
 
-        <!-- No Result -->
-        <div class="no-result" id="no-result">
-          <div class="icon">🔎</div>
-          <p>No record found for this Patient ID. Please check and try again.</p>
+        <div class="no-result" id="no-result" style="display:none">
+          <div class="no-icon">🔎</div>
+          <p>No record found. Please check the Patient ID.</p>
         </div>
 
-        <!-- Recent Records -->
-        <div class="recent-records" id="recent-records">
-          <div class="recent-title">📋 Recent Records</div>
-          <div class="records-list" id="records-list">
-            <!-- Populated by JS -->
-          </div>
+        <!-- Recent -->
+        <div class="recent-section" id="recent-section">
+          <div class="recent-heading">Recent Records</div>
+          <div class="recent-list" id="recent-list"></div>
         </div>
       </div>
     </section>
-
   </main>
 
-  <!-- ══════════════ LOADING OVERLAY ══════════════ -->
-  <div class="loading-overlay" id="loading-overlay">
-    <div class="spinner"></div>
-    <p id="loading-text">Saving record...</p>
+  <!-- ═══ LOADING ═══ -->
+  <div class="overlay" id="loading" style="display:none">
+    <div class="loader"></div>
+    <p id="load-text">Saving…</p>
   </div>
 
-  <!-- ══════════════ TOAST CONTAINER ══════════════ -->
-  <div class="toast-container" id="toast-container"></div>
+  <!-- ═══ TOASTS ═══ -->
+  <div class="toasts" id="toasts"></div>
 
-  <!-- ══════════════ SUPABASE CONFIG MODAL ══════════════ -->
-  <div class="config-modal-overlay" id="config-modal" >
-    <div class="config-modal">
-      <h2>⚙️ Supabase Configuration</h2>
-      <p>Enter your Supabase project credentials. These are saved in your browser's local storage.</p>
-
-      <div class="config-field">
-        <label for="config-url">Supabase Project URL</label>
-        <input type="url" id="config-url" placeholder="https://your-project.supabase.co" />
-      </div>
-
-      <div class="config-field">
-        <label for="config-key">Supabase Anon Key</label>
-        <input type="text" id="config-key" placeholder="eyJhbGciOiJIUzI1NiIs..." />
-      </div>
-
-      <div class="config-actions">
-        <button class="btn btn-secondary" id="btn-config-cancel">Cancel</button>
-        <button class="btn btn-primary" id="btn-config-save">💾 Save & Connect</button>
+  <!-- ═══ SETTINGS MODAL ═══ -->
+  <div class="overlay modal-overlay" id="modal" style="display:none">
+    <div class="modal-box">
+      <h2>⚙️ Supabase Settings</h2>
+      <p>Enter your Supabase credentials. Stored locally in your browser.</p>
+      <label>Project URL</label>
+      <input type="url" class="text-field" id="cfg-url" placeholder="https://xxxxx.supabase.co" />
+      <label>Anon / Publishable Key</label>
+      <input type="text" class="text-field" id="cfg-key" placeholder="eyJhbGciOi…" />
+      <div class="modal-foot">
+        <button class="btn ghost" id="cfg-cancel">Cancel</button>
+        <button class="btn gold" id="cfg-save">Save & Connect</button>
       </div>
     </div>
   </div>
