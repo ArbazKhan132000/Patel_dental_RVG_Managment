@@ -15,7 +15,12 @@
   <header class="app-header">
     <div class="header-content">
       <div class="logo-section">
-        <div class="logo-icon">🦷</div>
+        <div class="logo-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C9.5 2 7.5 3.5 7 5.5C6.5 7.5 5 8 4 8C2.5 8 1 9.5 1 11.5C1 14 3 16 5 18C7 20 9 22 12 22C15 22 17 20 19 18C21 16 23 14 23 11.5C23 9.5 21.5 8 20 8C19 8 17.5 7.5 17 5.5C16.5 3.5 14.5 2 12 2Z" fill="white" fill-opacity="0.95"/>
+            <path d="M9 10C9 10 10 14 12 14C14 14 15 10 15 10" stroke="rgba(20,184,166,0.8)" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
         <div class="logo-text">
           <h1>Patel Dental Clinic</h1>
           <span>RVG Management System</span>
@@ -35,6 +40,37 @@
       </div>
     </div>
   </header>
+
+  <!-- ══════════════ WELCOME BANNER ══════════════ -->
+  <section class="welcome-banner">
+    <div class="welcome-content">
+      <div class="welcome-left">
+        <div class="welcome-greeting">
+          <span class="greeting-wave">👋</span>
+          <div>
+            <h2>Welcome, <span>Dr. Nazneen</span></h2>
+            <p class="welcome-subtitle" id="welcome-date">Loading...</p>
+          </div>
+        </div>
+      </div>
+      <div class="welcome-right">
+        <div class="stat-pill">
+          <span class="stat-icon">📋</span>
+          <div class="stat-info">
+            <span class="stat-value" id="stat-total">—</span>
+            <span class="stat-label">Total Records</span>
+          </div>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-icon">📅</span>
+          <div class="stat-info">
+            <span class="stat-value" id="stat-today">—</span>
+            <span class="stat-label">Today</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- ══════════════ MAIN CONTENT ══════════════ -->
   <main class="main-container">
