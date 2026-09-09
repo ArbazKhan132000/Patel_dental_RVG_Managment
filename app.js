@@ -1,847 +1,416 @@
-/* ============================================
-   Patel Dental Clinic — RVG Management System
-   Application Logic
-   ============================================ */
+/* ═══════════════════════════════════════════
+   Patel Dental Clinic — RVG Manager
+   Application Logic (Complete Rebuild)
+   ═══════════════════════════════════════════ */
+
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
 
 // ── State ──
-const state = {
-  currentStep: 1,
-  imageFile: null,
-  imageDataUrl: null,
-  patientName: '',
-  toothNumber: '',
-  supabaseClient: null,
-  isListening: false,
-  currentRecognition: null,
+const S = {
+  step: 1,
+  file: null,
+  dataUrl: null,
+  name: '',
+  tooth: '',
+  db: null,
+  listening: false,
+  recog: null,
 };
 
-// ── Supabase Init ──
-function getSupabaseConfig() {
-  return {
-    url: localStorage.getItem('supabase_url') || '',
-    key: localStorage.getItem('supabase_key') || '',
-  };
+/* ════════════════ SUPABASE ════════════════ */
+function cfgGet() {
+  return { url: localStorage.getItem('sb_url') || '', key: localStorage.getItem('sb_key') || '' };
 }
 
-function initSupabase() {
-  const config = getSupabaseConfig();
-  if (config.url && config.key) {
-    try {
-      state.supabaseClient = supabase.createClient(config.url, config.key);
-      console.log('✅ Supabase connected');
-      return true;
-    } catch (err) {
-      console.error('Supabase init error:', err);
-      state.supabaseClient = null;
-      return false;
-    }
+function sbInit() {
+  const c = cfgGet();
+  if (c.url && c.key) {
+    try { S.db = supabase.createClient(c.url, c.key); return true; }
+    catch(e) { S.db = null; return false; }
   }
   return false;
 }
 
-// ── DOM Elements ──
-const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => document.querySelectorAll(sel);
+// Settings modal
+$('#btn-settings').onclick = () => {
+  const c = cfgGet();
+  $('#cfg-url').value = c.url;
+  $('#cfg-key').value = c.key;
+  $('#modal').style.display = '';
+};
+$('#cfg-cancel').onclick = () => $('#modal').style.display = 'none';
+$('#cfg-save').onclick = () => {
+  const u = $('#cfg-url').value.trim(), k = $('#cfg-key').value.trim();
+  if (!u || !k) return toast('Enter both fields', 'err');
+  localStorage.setItem('sb_url', u);
+  localStorage.setItem('sb_key', k);
+  if (sbInit()) { toast('Connected!', 'ok'); $('#modal').style.display = 'none'; updateStats(); }
+  else toast('Connection failed', 'err');
+};
 
-// ── Toast Notifications ──
-function showToast(message, type = 'info') {
-  const container = $('#toast-container');
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.textContent = message;
-  container.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
+/* ════════════════ TOAST ════════════════ */
+function toast(msg, type = 'info') {
+  const d = document.createElement('div');
+  d.className = `toast ${type}`;
+  d.textContent = msg;
+  $('#toasts').appendChild(d);
+  setTimeout(() => d.remove(), 3200);
 }
 
-// ── Loading Overlay ──
-function showLoading(text = 'Saving record...') {
-  $('#loading-text').textContent = text;
-  $('#loading-overlay').classList.add('visible');
+/* ════════════════ LOADING ════════════════ */
+function showLoad(t = 'Saving…') { $('#load-text').textContent = t; $('#loading').style.display = ''; }
+function hideLoad() { $('#loading').style.display = 'none'; }
+
+/* ════════════════ NAV TABS ════════════════ */
+$$('.nav-pill').forEach(p => p.onclick = () => {
+  $$('.nav-pill').forEach(x => x.classList.remove('active'));
+  p.classList.add('active');
+  $$('.view').forEach(v => v.classList.remove('active'));
+  $(`#view-${p.dataset.view}`).classList.add('active');
+  if (p.dataset.view === 'search') loadRecent();
+});
+
+/* ════════════════ STEP NAV ════════════════ */
+function goStep(n) {
+  $$('.step').forEach(s => { s.classList.remove('active'); s.style.display = ''; });
+  const el = $(`#s${n}`);
+  if (el) { el.style.display = 'block'; void el.offsetHeight; el.classList.add('active'); }
+
+  $$('.prog-step').forEach(p => {
+    const sn = +p.dataset.s;
+    p.classList.remove('active', 'done');
+    if (sn === n) p.classList.add('active');
+    else if (sn < n) p.classList.add('done');
+  });
+  $$('.prog-line').forEach(l => {
+    const ln = +l.dataset.l;
+    l.classList.remove('done', 'active');
+    if (ln < n) l.classList.add('done');
+    else if (ln === n - 1) l.classList.add('active');
+  });
+  S.step = n;
+  if (n === 4) fillConfirm();
 }
 
-function hideLoading() {
-  $('#loading-overlay').classList.remove('visible');
-}
-
-// ── Navigation Tabs ──
-$$('.nav-tab').forEach((tab) => {
-  tab.addEventListener('click', () => {
-    const view = tab.dataset.view;
-    $$('.nav-tab').forEach((t) => t.classList.remove('active'));
-    tab.classList.add('active');
-    $$('.view-panel').forEach((p) => p.classList.remove('active'));
-    $(`#view-${view}`).classList.add('active');
-
-    if (view === 'search') {
-      loadRecentRecords();
-    }
-  });
-});
-
-// ── Supabase Settings Modal ──
-$('#btn-settings').addEventListener('click', () => {
-  const config = getSupabaseConfig();
-  $('#config-url').value = config.url;
-  $('#config-key').value = config.key;
-  $('#config-modal').classList.add('visible');
-});
-
-$('#btn-config-cancel').addEventListener('click', () => {
-  $('#config-modal').classList.remove('visible');
-});
-
-$('#btn-config-save').addEventListener('click', () => {
-  const url = $('#config-url').value.trim();
-  const key = $('#config-key').value.trim();
-
-  if (!url || !key) {
-    showToast('Please enter both URL and Key', 'error');
-    return;
-  }
-
-  localStorage.setItem('supabase_url', url);
-  localStorage.setItem('supabase_key', key);
-
-  if (initSupabase()) {
-    showToast('Supabase connected successfully!', 'success');
-    $('#config-modal').classList.remove('visible');
-  } else {
-    showToast('Failed to connect. Check your credentials.', 'error');
-  }
-});
-
-// ── Step Navigation ──
-function goToStep(step) {
-  // Hide all step panels
-  $$('.step-panel').forEach((p) => {
-    p.classList.remove('active');
-    p.style.display = '';
-  });
-
-  // Show target step
-  const targetPanel = $(`#step-${step}`);
-  if (targetPanel) {
-    targetPanel.style.display = 'block';
-    // Force reflow for animation
-    void targetPanel.offsetHeight;
-    targetPanel.classList.add('active');
-  }
-
-  // Update progress indicators
-  $$('.step-indicator').forEach((indicator) => {
-    const s = parseInt(indicator.dataset.step);
-    indicator.classList.remove('active', 'completed');
-    if (s === step) indicator.classList.add('active');
-    else if (s < step) indicator.classList.add('completed');
-  });
-
-  // Update connectors
-  $$('.step-connector').forEach((conn) => {
-    const c = parseInt(conn.dataset.connector);
-    conn.classList.remove('completed', 'active');
-    if (c < step) conn.classList.add('completed');
-    else if (c === step - 1) conn.classList.add('active');
-  });
-
-  state.currentStep = step;
-
-  // If step 4, populate confirmation
-  if (step === 4) populateConfirmation();
-}
-
-// ── STEP 1: Image Upload ──
-const uploadArea = $('#upload-area');
+/* ════════════════ STEP 1: UPLOAD ════════════════ */
+const dropZone = $('#drop-zone');
 const fileInput = $('#file-input');
-const imagePreviewContainer = $('#image-preview-container');
-const imagePreview = $('#image-preview');
 
-uploadArea.addEventListener('click', () => fileInput.click());
+dropZone.onclick = () => fileInput.click();
+dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add('over'); };
+dropZone.ondragleave = () => dropZone.classList.remove('over');
+dropZone.ondrop = e => {
+  e.preventDefault(); dropZone.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) handleFile(f);
+  else toast('Please drop an image file', 'err');
+};
+fileInput.onchange = e => { if (e.target.files[0]) handleFile(e.target.files[0]); };
 
-uploadArea.addEventListener('dragover', (e) => {
-  e.preventDefault();
-  uploadArea.classList.add('drag-over');
-});
-
-uploadArea.addEventListener('dragleave', () => {
-  uploadArea.classList.remove('drag-over');
-});
-
-uploadArea.addEventListener('drop', (e) => {
-  e.preventDefault();
-  uploadArea.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) {
-    handleImageUpload(file);
-  } else {
-    showToast('Please upload an image file', 'error');
-  }
-});
-
-fileInput.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (file) handleImageUpload(file);
-});
-
-function handleImageUpload(file) {
-  state.imageFile = file;
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    state.imageDataUrl = e.target.result;
-    imagePreview.src = e.target.result;
-    imagePreviewContainer.classList.add('visible');
-    uploadArea.style.display = 'none';
-
-    $('#file-name').textContent = file.name;
-    $('#file-size').textContent = ` — ${(file.size / 1024).toFixed(1)} KB`;
-
-    $('#btn-next-1').disabled = false;
-    showToast('Image uploaded successfully', 'success');
+function handleFile(f) {
+  S.file = f;
+  const r = new FileReader();
+  r.onload = e => {
+    S.dataUrl = e.target.result;
+    $('#preview-img').src = S.dataUrl;
+    $('#file-name-display').textContent = `${f.name} — ${(f.size/1024).toFixed(1)} KB`;
+    $('#preview-box').classList.add('show');
+    dropZone.style.display = 'none';
+    $('#next1').disabled = false;
+    toast('Image loaded', 'ok');
   };
-  reader.readAsDataURL(file);
+  r.readAsDataURL(f);
 }
 
-$('#remove-image-btn').addEventListener('click', () => {
-  state.imageFile = null;
-  state.imageDataUrl = null;
-  imagePreview.src = '';
-  imagePreviewContainer.classList.remove('visible');
-  uploadArea.style.display = '';
+$('#btn-remove').onclick = () => {
+  S.file = null; S.dataUrl = null;
+  $('#preview-box').classList.remove('show');
+  dropZone.style.display = '';
   fileInput.value = '';
-  $('#btn-next-1').disabled = true;
-});
+  $('#next1').disabled = true;
+};
 
-$('#btn-next-1').addEventListener('click', () => {
-  if (state.imageFile) goToStep(2);
-});
+$('#next1').onclick = () => { if (S.file) goStep(2); };
 
-// ── STEP 2: Patient Name — Voice Input ──
-const micNameBtn = $('#mic-name');
-const nameDisplay = $('#name-display');
-const micNameStatus = $('#mic-name-status');
+/* ════════════════ STEP 2: NAME (VOICE) ════════════════ */
+$('#mic-name').onclick = () => {
+  if (S.listening) stopListen();
+  else startListen('name');
+};
 
-micNameBtn.addEventListener('click', () => {
-  if (state.isListening) {
-    stopListening();
-  } else {
-    startListening('name');
-  }
-});
+$('#apply-name').onclick = () => {
+  const v = $('#manual-name').value.trim();
+  if (v) { setName(v); toast('Name set', 'ok'); }
+};
+$('#manual-name').onkeypress = e => { if (e.key === 'Enter') $('#apply-name').click(); };
 
-// Manual input toggle
-$('#manual-name-toggle').addEventListener('click', () => {
-  $('#manual-name-wrapper').classList.toggle('visible');
-});
-
-$('#manual-name-apply').addEventListener('click', () => {
-  const val = $('#manual-name-input').value.trim();
-  if (val) {
-    state.patientName = val;
-    updateNameDisplay(val);
-    showToast('Name applied', 'success');
-  }
-});
-
-$('#manual-name-input').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    $('#manual-name-apply').click();
-  }
-});
-
-function updateNameDisplay(name) {
-  nameDisplay.innerHTML = name;
-  nameDisplay.classList.add('has-value');
-  state.patientName = name;
-  $('#btn-next-2').disabled = false;
+function setName(v) {
+  S.name = v;
+  const el = $('#name-val');
+  el.textContent = v;
+  el.classList.add('filled');
+  $('#next2').disabled = false;
 }
 
-$('#btn-back-2').addEventListener('click', () => goToStep(1));
-$('#btn-next-2').addEventListener('click', () => {
-  if (state.patientName) goToStep(3);
-});
+$('#back2').onclick = () => goStep(1);
+$('#next2').onclick = () => { if (S.name) goStep(3); };
 
-// ── STEP 3: Tooth Number — Voice Input ──
-const micToothBtn = $('#mic-tooth');
-const toothDisplay = $('#tooth-display');
-const micToothStatus = $('#mic-tooth-status');
+/* ════════════════ STEP 3: TOOTH (VOICE) ════════════════ */
+$('#mic-tooth').onclick = () => {
+  if (S.listening) stopListen();
+  else startListen('tooth');
+};
 
-micToothBtn.addEventListener('click', () => {
-  if (state.isListening) {
-    stopListening();
-  } else {
-    startListening('tooth');
-  }
-});
+$('#apply-tooth').onclick = () => {
+  const v = $('#manual-tooth').value.trim();
+  if (v) { setTooth(v); toast('Tooth set', 'ok'); }
+};
+$('#manual-tooth').onkeypress = e => { if (e.key === 'Enter') $('#apply-tooth').click(); };
 
-// Manual input toggle
-$('#manual-tooth-toggle').addEventListener('click', () => {
-  $('#manual-tooth-wrapper').classList.toggle('visible');
-});
-
-$('#manual-tooth-apply').addEventListener('click', () => {
-  const val = $('#manual-tooth-input').value.trim();
-  if (val) {
-    state.toothNumber = val;
-    updateToothDisplay(val);
-    showToast('Tooth number applied', 'success');
-  }
-});
-
-$('#manual-tooth-input').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    $('#manual-tooth-apply').click();
-  }
-});
-
-function updateToothDisplay(tooth) {
-  toothDisplay.innerHTML = tooth;
-  toothDisplay.classList.add('has-value');
-  state.toothNumber = tooth;
-  $('#btn-next-3').disabled = false;
-
-  // Highlight in tooth chart
-  $$('.tooth-num').forEach((tn) => tn.classList.remove('selected'));
-  const toothEl = document.querySelector(`.tooth-num[data-tooth="${tooth}"]`);
-  if (toothEl) toothEl.classList.add('selected');
+function setTooth(v) {
+  S.tooth = v;
+  const el = $('#tooth-val');
+  el.textContent = v;
+  el.classList.add('filled');
+  $('#next3').disabled = false;
+  $$('.t').forEach(t => t.classList.remove('sel'));
+  const tn = document.querySelector(`.t[data-t="${v}"]`);
+  if (tn) tn.classList.add('sel');
 }
 
-// Tooth chart click
-$$('.tooth-num').forEach((tn) => {
-  tn.addEventListener('click', () => {
-    const num = tn.dataset.tooth;
-    state.toothNumber = num;
-    updateToothDisplay(num);
-    showToast(`Tooth ${num} selected`, 'info');
-  });
-});
+$$('.t').forEach(t => t.onclick = () => { setTooth(t.dataset.t); toast(`Tooth ${t.dataset.t} selected`, 'info'); });
 
-$('#btn-back-3').addEventListener('click', () => goToStep(2));
-$('#btn-next-3').addEventListener('click', () => {
-  if (state.toothNumber) goToStep(4);
-});
+$('#back3').onclick = () => goStep(2);
+$('#next3').onclick = () => { if (S.tooth) goStep(4); };
 
-// ── Speech Recognition ──
-function startListening(mode) {
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
+/* ════════════════ SPEECH RECOGNITION ════════════════ */
+function startListen(mode) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { toast('Speech not supported — please type manually', 'err'); return; }
 
-  if (!SpeechRecognition) {
-    showToast('Speech recognition not supported. Please type manually.', 'error');
-    return;
-  }
+  const r = new SR();
+  r.lang = 'en-IN';
+  r.interimResults = true;
+  r.continuous = false;
+  r.maxAlternatives = 1;
+  S.recog = r;
+  S.listening = true;
 
-  const recognition = new SpeechRecognition();
-  recognition.lang = 'en-IN';
-  recognition.interimResults = true;
-  recognition.maxAlternatives = 1;
-  recognition.continuous = false;
+  const btn = mode === 'name' ? $('#mic-name') : $('#mic-tooth');
+  const lbl = mode === 'name' ? $('#mic-name-label') : $('#mic-tooth-label');
+  btn.classList.add('listening');
+  lbl.textContent = 'Listening…';
 
-  state.currentRecognition = recognition;
-  state.isListening = true;
-
-  const micBtn = mode === 'name' ? micNameBtn : micToothBtn;
-  const statusEl = mode === 'name' ? micNameStatus : micToothStatus;
-  const displayEl = mode === 'name' ? nameDisplay : toothDisplay;
-
-  micBtn.classList.add('listening');
-  statusEl.textContent = 'Listening...';
-  statusEl.classList.add('listening');
-
-  recognition.onresult = (event) => {
-    let transcript = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      transcript += event.results[i][0].transcript;
-    }
-    transcript = transcript.trim();
-
+  r.onresult = ev => {
+    let txt = '';
+    for (let i = ev.resultIndex; i < ev.results.length; i++) txt += ev.results[i][0].transcript;
+    txt = txt.trim();
     if (mode === 'name') {
-      // Capitalize first letters
-      transcript = transcript
-        .split(' ')
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-        .join(' ');
-      displayEl.innerHTML = transcript;
-      displayEl.classList.add('has-value');
-      state.patientName = transcript;
-      $('#btn-next-2').disabled = !transcript;
+      txt = txt.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+      setName(txt);
     } else {
-      // Extract numbers from speech
-      const extracted = extractToothNumber(transcript);
-      displayEl.innerHTML = extracted || transcript;
-      displayEl.classList.add('has-value');
-      state.toothNumber = extracted || transcript;
-      $('#btn-next-3').disabled = !(extracted || transcript);
-
-      // Highlight tooth chart
-      if (extracted) {
-        $$('.tooth-num').forEach((tn) => tn.classList.remove('selected'));
-        const toothEl = document.querySelector(
-          `.tooth-num[data-tooth="${extracted}"]`
-        );
-        if (toothEl) toothEl.classList.add('selected');
-      }
+      const num = extractNum(txt);
+      setTooth(num || txt);
     }
   };
 
-  recognition.onend = () => {
-    micBtn.classList.remove('listening');
-    statusEl.textContent = 'Tap to speak again';
-    statusEl.classList.remove('listening');
-    state.isListening = false;
-    state.currentRecognition = null;
-
-    if (mode === 'name' && state.patientName) {
-      showToast(`Name captured: ${state.patientName}`, 'success');
-    } else if (mode === 'tooth' && state.toothNumber) {
-      showToast(`Tooth number captured: ${state.toothNumber}`, 'success');
-    }
+  r.onend = () => {
+    btn.classList.remove('listening');
+    lbl.textContent = 'Tap to speak again';
+    S.listening = false;
+    S.recog = null;
+    if (mode === 'name' && S.name) toast(`Captured: ${S.name}`, 'ok');
+    else if (mode === 'tooth' && S.tooth) toast(`Captured: ${S.tooth}`, 'ok');
   };
 
-  recognition.onerror = (event) => {
-    console.error('Speech recognition error:', event.error);
-    micBtn.classList.remove('listening');
-    statusEl.textContent = 'Tap to try again';
-    statusEl.classList.remove('listening');
-    state.isListening = false;
-    state.currentRecognition = null;
-
-    if (event.error === 'no-speech') {
-      showToast('No speech detected. Please try again.', 'error');
-    } else if (event.error === 'not-allowed') {
-      showToast('Microphone access denied. Please allow microphone permission.', 'error');
-    } else {
-      showToast(`Speech error: ${event.error}. Try typing manually.`, 'error');
-    }
+  r.onerror = ev => {
+    btn.classList.remove('listening');
+    lbl.textContent = 'Tap to try again';
+    S.listening = false; S.recog = null;
+    if (ev.error === 'no-speech') toast('No speech detected — try again', 'err');
+    else if (ev.error === 'not-allowed') toast('Mic access denied — allow in browser settings', 'err');
+    else toast(`Error: ${ev.error}`, 'err');
   };
 
-  recognition.start();
+  r.start();
 }
 
-function stopListening() {
-  if (state.currentRecognition) {
-    state.currentRecognition.stop();
-    state.isListening = false;
-  }
-}
+function stopListen() { if (S.recog) { S.recog.stop(); S.listening = false; } }
 
-// Extract tooth number from spoken text
-function extractToothNumber(text) {
-  // Number words to digits
-  const wordToNum = {
-    zero: '0', one: '1', two: '2', three: '3', four: '4',
-    five: '5', six: '6', seven: '7', eight: '8', nine: '9',
-    ten: '10', eleven: '11', twelve: '12', thirteen: '13',
-    fourteen: '14', fifteen: '15', sixteen: '16', seventeen: '17',
-    eighteen: '18', nineteen: '19', twenty: '20',
-    'twenty one': '21', 'twenty two': '22', 'twenty three': '23',
-    'twenty four': '24', 'twenty five': '25', 'twenty six': '26',
-    'twenty seven': '27', 'twenty eight': '28',
-    'thirty one': '31', 'thirty two': '32', 'thirty three': '33',
-    'thirty four': '34', 'thirty five': '35', 'thirty six': '36',
-    'thirty seven': '37', 'thirty eight': '38',
-    'forty one': '41', 'forty two': '42', 'forty three': '43',
-    'forty four': '44', 'forty five': '45', 'forty six': '46',
-    'forty seven': '47', 'forty eight': '48',
+function extractNum(txt) {
+  const map = {
+    'eleven':11,'twelve':12,'thirteen':13,'fourteen':14,'fifteen':15,'sixteen':16,'seventeen':17,'eighteen':18,
+    'twenty one':21,'twenty two':22,'twenty three':23,'twenty four':24,'twenty five':25,'twenty six':26,'twenty seven':27,'twenty eight':28,
+    'thirty one':31,'thirty two':32,'thirty three':33,'thirty four':34,'thirty five':35,'thirty six':36,'thirty seven':37,'thirty eight':38,
+    'forty one':41,'forty two':42,'forty three':43,'forty four':44,'forty five':45,'forty six':46,'forty seven':47,'forty eight':48,
   };
-
-  let lower = text.toLowerCase().trim();
-
-  // Check word matches first
-  for (const [word, num] of Object.entries(wordToNum)) {
-    if (lower.includes(word)) {
-      return num;
-    }
-  }
-
-  // Extract numeric digits
-  const nums = text.replace(/[^0-9]/g, '');
-  if (nums.length >= 2) {
-    return nums.substring(0, 2);
-  }
-  if (nums.length === 1) {
-    return nums;
-  }
-
-  return text;
+  const lower = txt.toLowerCase();
+  for (const [w, n] of Object.entries(map)) if (lower.includes(w)) return String(n);
+  const nums = txt.replace(/[^0-9]/g, '');
+  if (nums.length >= 2) return nums.substring(0, 2);
+  return nums || txt;
 }
 
-// ── STEP 4: Confirmation ──
-function populateConfirmation() {
-  $('#confirm-image').src = state.imageDataUrl;
-  $('#confirm-name').textContent = state.patientName;
-  $('#confirm-tooth').textContent = state.toothNumber;
-  $('#confirm-datetime').textContent = new Date().toLocaleString('en-IN', {
-    dateStyle: 'full',
-    timeStyle: 'short',
-  });
+/* ════════════════ STEP 4: CONFIRM ════════════════ */
+function fillConfirm() {
+  $('#confirm-img').src = S.dataUrl;
+  $('#cf-name').textContent = S.name;
+  $('#cf-tooth').textContent = S.tooth;
+  $('#cf-date').textContent = new Date().toLocaleString('en-IN', { dateStyle: 'full', timeStyle: 'short' });
 }
 
-$('#btn-back-4').addEventListener('click', () => goToStep(3));
+$('#back4').onclick = () => goStep(3);
 
-// ── Save Record ──
-$('#btn-save').addEventListener('click', saveRecord);
+/* ════════════════ SAVE ════════════════ */
+$('#btn-save').onclick = save;
 
-async function saveRecord() {
-  if (!state.supabaseClient) {
-    showToast('Please configure Supabase first (⚙️ button)', 'error');
-    return;
-  }
-
-  showLoading('Saving record...');
-
+async function save() {
+  if (!S.db) { toast('Configure Supabase first (⚙️)', 'err'); return; }
+  showLoad('Uploading image…');
   try {
-    // 1. Generate Patient ID
-    const patientId = await generatePatientId();
+    const pid = await genId();
+    const ext = S.file.name.split('.').pop();
+    const path = `${pid}.${ext}`;
 
-    // 2. Upload image to Supabase Storage
-    const fileExt = state.imageFile.name.split('.').pop();
-    const filePath = `${patientId}.${fileExt}`;
+    const { error: upErr } = await S.db.storage.from('rvg-images').upload(path, S.file, { cacheControl: '3600', upsert: false });
+    if (upErr) throw new Error(upErr.message);
 
-    showLoading('Uploading RVG image...');
+    const { data: urlData } = S.db.storage.from('rvg-images').getPublicUrl(path);
 
-    const { data: uploadData, error: uploadError } =
-      await state.supabaseClient.storage
-        .from('rvg-images')
-        .upload(filePath, state.imageFile, {
-          cacheControl: '3600',
-          upsert: false,
-        });
+    showLoad('Saving record…');
+    const { error: insErr } = await S.db.from('patients').insert([{
+      patient_id: pid, patient_name: S.name, tooth_number: S.tooth,
+      image_url: urlData.publicUrl, image_path: path,
+    }]).select();
+    if (insErr) throw new Error(insErr.message);
 
-    if (uploadError) {
-      throw new Error(`Image upload failed: ${uploadError.message}`);
-    }
-
-    // 3. Get public URL
-    const { data: urlData } = state.supabaseClient.storage
-      .from('rvg-images')
-      .getPublicUrl(filePath);
-
-    const imageUrl = urlData.publicUrl;
-
-    // 4. Insert record into database
-    showLoading('Saving patient record...');
-
-    const { data: insertData, error: insertError } =
-      await state.supabaseClient.from('patients').insert([
-        {
-          patient_id: patientId,
-          patient_name: state.patientName,
-          tooth_number: state.toothNumber,
-          image_url: imageUrl,
-          image_path: filePath,
-        },
-      ]).select();
-
-    if (insertError) {
-      throw new Error(`Record save failed: ${insertError.message}`);
-    }
-
-    hideLoading();
-
-    // 5. Show success
-    showSuccess(patientId);
-    showToast('Record saved successfully!', 'success');
-    updateDashboardStats();
-  } catch (err) {
-    hideLoading();
-    console.error('Save error:', err);
-    showToast(err.message || 'Failed to save record', 'error');
-  }
+    hideLoad();
+    showSuccess(pid);
+    toast('Saved!', 'ok');
+    updateStats();
+  } catch(e) { hideLoad(); toast(e.message || 'Save failed', 'err'); console.error(e); }
 }
 
-async function generatePatientId() {
-  const now = new Date();
-  const yy = String(now.getFullYear()).slice(-2);
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  const dateStr = `${yy}${mm}${dd}`;
-
+async function genId() {
+  const d = new Date();
+  const ds = `${String(d.getFullYear()).slice(-2)}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
   try {
-    // Get next sequence value from Supabase
-    const { data, error } = await state.supabaseClient.rpc(
-      'get_next_patient_seq'
-    );
-
+    const { data, error } = await S.db.rpc('get_next_patient_seq');
     if (error) throw error;
-
-    const seq = String(data).padStart(4, '0');
-    return `PDC-${dateStr}-${seq}`;
-  } catch (err) {
-    // Fallback: use timestamp-based ID
-    console.warn('Sequence error, using fallback:', err);
-    const seq = String(Math.floor(Math.random() * 9000) + 1000);
-    return `PDC-${dateStr}-${seq}`;
+    return `PDC-${ds}-${String(data).padStart(4,'0')}`;
+  } catch {
+    return `PDC-${ds}-${String(Math.floor(Math.random()*9000)+1000)}`;
   }
 }
 
-function showSuccess(patientId) {
-  // Hide all step panels
-  $$('.step-panel').forEach((p) => {
-    p.classList.remove('active');
-    p.style.display = 'none';
-  });
-
-  // Show success
-  const successPanel = $('#step-success');
-  successPanel.style.display = 'block';
-  void successPanel.offsetHeight;
-  successPanel.classList.add('active');
-
-  $('#generated-patient-id').textContent = patientId;
-
-  // Update progress - all completed
-  $$('.step-indicator').forEach((i) => {
-    i.classList.remove('active');
-    i.classList.add('completed');
-  });
-  $$('.step-connector').forEach((c) => c.classList.add('completed'));
+function showSuccess(pid) {
+  $$('.step').forEach(s => { s.classList.remove('active'); s.style.display = 'none'; });
+  const el = $('#s-success');
+  el.style.display = 'block'; void el.offsetHeight; el.classList.add('active');
+  $('#gen-id').textContent = pid;
+  $$('.prog-step').forEach(p => { p.classList.remove('active'); p.classList.add('done'); });
+  $$('.prog-line').forEach(l => l.classList.add('done'));
 }
 
-// Success actions
-$('#btn-copy-id').addEventListener('click', () => {
-  const id = $('#generated-patient-id').textContent;
-  navigator.clipboard
-    .writeText(id)
-    .then(() => showToast('Patient ID copied to clipboard!', 'success'))
-    .catch(() => showToast('Failed to copy', 'error'));
-});
+$('#btn-copy').onclick = () => {
+  navigator.clipboard.writeText($('#gen-id').textContent)
+    .then(() => toast('Copied!', 'ok')).catch(() => toast('Copy failed', 'err'));
+};
+$('#btn-print').onclick = () => window.print();
+$('#btn-new').onclick = resetWiz;
 
-$('#btn-print-record').addEventListener('click', () => {
-  window.print();
-});
-
-$('#btn-new-record').addEventListener('click', resetWizard);
-
-function resetWizard() {
-  // Reset state
-  state.imageFile = null;
-  state.imageDataUrl = null;
-  state.patientName = '';
-  state.toothNumber = '';
-  state.currentStep = 1;
-
-  // Reset UI
-  imagePreview.src = '';
-  imagePreviewContainer.classList.remove('visible');
-  uploadArea.style.display = '';
+function resetWiz() {
+  S.file = null; S.dataUrl = null; S.name = ''; S.tooth = ''; S.step = 1;
+  $('#preview-box').classList.remove('show');
+  dropZone.style.display = '';
   fileInput.value = '';
-  $('#btn-next-1').disabled = true;
-
-  nameDisplay.innerHTML = '<span class="placeholder">Patient name will appear here...</span>';
-  nameDisplay.classList.remove('has-value');
-  $('#btn-next-2').disabled = true;
-  $('#manual-name-input').value = '';
-  $('#manual-name-wrapper').classList.remove('visible');
-
-  toothDisplay.innerHTML = '<span class="placeholder">Tooth number will appear here...</span>';
-  toothDisplay.classList.remove('has-value');
-  $('#btn-next-3').disabled = true;
-  $('#manual-tooth-input').value = '';
-  $('#manual-tooth-wrapper').classList.remove('visible');
-  $$('.tooth-num').forEach((tn) => tn.classList.remove('selected'));
-
-  // Reset step indicators
-  $$('.step-indicator').forEach((i) => {
-    i.classList.remove('active', 'completed');
-  });
-  $$('.step-connector').forEach((c) => {
-    c.classList.remove('active', 'completed');
-  });
-
-  // Show step 1
-  $$('.step-panel').forEach((p) => {
-    p.classList.remove('active');
-    p.style.display = '';
-  });
-  goToStep(1);
+  $('#next1').disabled = true;
+  $('#name-val').innerHTML = '<span class="placeholder-text">Name will appear here…</span>';
+  $('#name-val').classList.remove('filled');
+  $('#next2').disabled = true;
+  $('#manual-name').value = '';
+  $('#tooth-val').innerHTML = '<span class="placeholder-text">Tooth # will appear here…</span>';
+  $('#tooth-val').classList.remove('filled');
+  $('#next3').disabled = true;
+  $('#manual-tooth').value = '';
+  $$('.t').forEach(t => t.classList.remove('sel'));
+  $$('.prog-step').forEach(p => p.classList.remove('active','done'));
+  $$('.prog-line').forEach(l => l.classList.remove('active','done'));
+  $$('.step').forEach(s => { s.classList.remove('active'); s.style.display = ''; });
+  goStep(1);
 }
 
-// ── Search ──
-$('#btn-search').addEventListener('click', searchPatient);
-$('#search-input').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') searchPatient();
-});
+/* ════════════════ SEARCH ════════════════ */
+$('#btn-search').onclick = doSearch;
+$('#search-input').onkeypress = e => { if (e.key === 'Enter') doSearch(); };
 
-async function searchPatient() {
-  const query = $('#search-input').value.trim().toUpperCase();
-
-  if (!query) {
-    showToast('Please enter a Patient ID', 'error');
-    return;
-  }
-
-  if (!state.supabaseClient) {
-    showToast('Please configure Supabase first (⚙️ button)', 'error');
-    return;
-  }
-
-  // Hide previous results
-  $('#search-result').classList.remove('visible');
-  $('#no-result').classList.remove('visible');
-
+async function doSearch() {
+  const q = $('#search-input').value.trim().toUpperCase();
+  if (!q) return toast('Enter a Patient ID', 'err');
+  if (!S.db) return toast('Configure Supabase first', 'err');
+  $('#result-card').style.display = 'none';
+  $('#no-result').style.display = 'none';
   try {
-    const { data, error } = await state.supabaseClient
-      .from('patients')
-      .select('*')
-      .eq('patient_id', query)
-      .single();
-
-    if (error || !data) {
-      $('#no-result').classList.add('visible');
-      return;
-    }
-
-    displaySearchResult(data);
-  } catch (err) {
-    console.error('Search error:', err);
-    showToast('Search failed. Please try again.', 'error');
-  }
+    const { data, error } = await S.db.from('patients').select('*').eq('patient_id', q).single();
+    if (error || !data) { $('#no-result').style.display = ''; return; }
+    showResult(data);
+  } catch { toast('Search failed', 'err'); }
 }
 
-function displaySearchResult(record) {
-  $('#result-id-badge').textContent = record.patient_id;
-  $('#result-image').src = record.image_url;
-  $('#result-name').textContent = record.patient_name;
-  $('#result-tooth').textContent = record.tooth_number;
-  $('#result-patient-id').textContent = record.patient_id;
-  $('#result-datetime').textContent = new Date(record.created_at).toLocaleString(
-    'en-IN',
-    { dateStyle: 'full', timeStyle: 'short' }
-  );
-
-  $('#search-result').classList.add('visible');
-  $('#no-result').classList.remove('visible');
+function showResult(r) {
+  $('#res-badge').textContent = r.patient_id;
+  $('#res-img').src = r.image_url;
+  $('#res-name').textContent = r.patient_name;
+  $('#res-tooth').textContent = r.tooth_number;
+  $('#res-pid').textContent = r.patient_id;
+  $('#res-date').textContent = new Date(r.created_at).toLocaleString('en-IN', { dateStyle: 'full', timeStyle: 'short' });
+  $('#result-card').style.display = '';
+  $('#no-result').style.display = 'none';
 }
 
-$('#btn-print-result').addEventListener('click', () => window.print());
+$('#btn-print-res').onclick = () => window.print();
 
-// ── Recent Records ──
-async function loadRecentRecords() {
-  if (!state.supabaseClient) {
-    $('#records-list').innerHTML =
-      '<p style="color:var(--text-muted); font-size:0.85rem; text-align:center; padding:1rem;">Configure Supabase to view records</p>';
-    return;
-  }
-
+async function loadRecent() {
+  if (!S.db) { $('#recent-list').innerHTML = '<p style="color:var(--t3);text-align:center;padding:1rem;font-size:.82rem">Configure Supabase to see records</p>'; return; }
   try {
-    const { data, error } = await state.supabaseClient
-      .from('patients')
-      .select('patient_id, patient_name, tooth_number, created_at')
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    if (error) throw error;
-
-    const list = $('#records-list');
-
-    if (!data || data.length === 0) {
-      list.innerHTML =
-        '<p style="color:var(--text-muted); font-size:0.85rem; text-align:center; padding:1rem;">No records yet</p>';
-      return;
-    }
-
-    list.innerHTML = data
-      .map((r) => {
-        const initials = r.patient_name
-          .split(' ')
-          .map((w) => w[0])
-          .join('')
-          .toUpperCase()
-          .slice(0, 2);
-        const date = new Date(r.created_at).toLocaleDateString('en-IN', {
-          day: 'numeric',
-          month: 'short',
-          year: '2-digit',
-        });
-        return `
-          <div class="record-item" data-pid="${r.patient_id}">
-            <div class="record-item-left">
-              <div class="record-item-avatar">${initials}</div>
-              <div class="record-item-info">
-                <div class="name">${r.patient_name}</div>
-                <div class="id">${r.patient_id}</div>
-              </div>
-            </div>
-            <div class="record-item-right">
-              <div class="tooth">Tooth ${r.tooth_number}</div>
-              <div class="date">${date}</div>
-            </div>
-          </div>
-        `;
-      })
-      .join('');
-
-    // Click to view record
-    list.querySelectorAll('.record-item').forEach((item) => {
-      item.addEventListener('click', () => {
-        $('#search-input').value = item.dataset.pid;
-        searchPatient();
-      });
-    });
-  } catch (err) {
-    console.error('Load recent error:', err);
-    $('#records-list').innerHTML =
-      '<p style="color:var(--text-muted); font-size:0.85rem; text-align:center; padding:1rem;">Failed to load records</p>';
-  }
+    const { data } = await S.db.from('patients').select('patient_id,patient_name,tooth_number,created_at').order('created_at', { ascending: false }).limit(10);
+    if (!data || !data.length) { $('#recent-list').innerHTML = '<p style="color:var(--t3);text-align:center;padding:1rem;font-size:.82rem">No records yet</p>'; return; }
+    $('#recent-list').innerHTML = data.map(r => {
+      const ini = r.patient_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+      const dt = new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' });
+      return `<div class="rec-item" data-pid="${r.patient_id}">
+        <div class="rec-left"><div class="rec-avatar">${ini}</div><div><div class="rec-name">${r.patient_name}</div><div class="rec-id">${r.patient_id}</div></div></div>
+        <div class="rec-right"><div class="rec-tooth">Tooth ${r.tooth_number}</div><div class="rec-date">${dt}</div></div>
+      </div>`;
+    }).join('');
+    $$('.rec-item').forEach(i => i.onclick = () => { $('#search-input').value = i.dataset.pid; doSearch(); });
+  } catch { $('#recent-list').innerHTML = '<p style="color:var(--t3);text-align:center;padding:1rem;font-size:.82rem">Failed to load</p>'; }
 }
 
-// ── Welcome Banner ──
-function updateWelcomeDate() {
-  const now = new Date();
-  const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
-  const dateStr = now.toLocaleDateString('en-IN', options);
-  const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-  const el = $('#welcome-date');
-  if (el) el.textContent = `${dateStr} • ${timeStr}`;
+/* ════════════════ WELCOME & STATS ════════════════ */
+function updateDate() {
+  const d = new Date();
+  $('#welcome-date').textContent = d.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' }) + ' • ' + d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
 }
 
-async function updateDashboardStats() {
-  if (!state.supabaseClient) {
-    $('#stat-total').textContent = '—';
-    $('#stat-today').textContent = '—';
-    return;
-  }
-
+async function updateStats() {
+  if (!S.db) return;
   try {
-    // Total records
-    const { count: total } = await state.supabaseClient
-      .from('patients')
-      .select('*', { count: 'exact', head: true });
-    $('#stat-total').textContent = total ?? 0;
-
-    // Today's records
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const { count: todayCount } = await state.supabaseClient
-      .from('patients')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', todayStart.toISOString());
-    $('#stat-today').textContent = todayCount ?? 0;
-  } catch (err) {
-    console.error('Stats error:', err);
-  }
+    const { count: tot } = await S.db.from('patients').select('*', { count: 'exact', head: true });
+    $('#stat-total').textContent = tot ?? 0;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const { count: td } = await S.db.from('patients').select('*', { count: 'exact', head: true }).gte('created_at', today.toISOString());
+    $('#stat-today').textContent = td ?? 0;
+  } catch {}
 }
 
-// ── Init ──
+/* ════════════════ INIT ════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
-  const connected = initSupabase();
-
-  if (!connected) {
-    // Show config modal on first visit
-    const config = getSupabaseConfig();
-    if (!config.url || !config.key) {
-      $('#config-modal').classList.add('visible');
-    }
-  }
-
-  // Welcome banner
-  updateWelcomeDate();
-  setInterval(updateWelcomeDate, 60000); // Update time every minute
-
-  // Dashboard stats
-  updateDashboardStats();
-
-  // Start at step 1
-  goToStep(1);
+  const ok = sbInit();
+  if (!ok) { const c = cfgGet(); if (!c.url || !c.key) $('#modal').style.display = ''; }
+  updateDate();
+  setInterval(updateDate, 60000);
+  updateStats();
+  goStep(1);
 });
-
