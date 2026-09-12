@@ -1,7 +1,9 @@
 /* ═══════════════════════════════════════════
    Patel Dental Clinic — RVG Manager
-   Application Logic (Complete Rebuild)
+   Application Logic — v3 (Mic Fix)
    ═══════════════════════════════════════════ */
+
+document.addEventListener('DOMContentLoaded', () => {
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -16,6 +18,7 @@ const S = {
   db: null,
   listening: false,
   recog: null,
+  activeMode: null,
 };
 
 /* ════════════════ SUPABASE ════════════════ */
@@ -26,28 +29,28 @@ function cfgGet() {
 function sbInit() {
   const c = cfgGet();
   if (c.url && c.key) {
-    try { S.db = supabase.createClient(c.url, c.key); return true; }
-    catch(e) { S.db = null; return false; }
+    try { S.db = supabase.createClient(c.url, c.key); console.log('✅ Supabase OK'); return true; }
+    catch(e) { console.error('Supabase init error:', e); S.db = null; return false; }
   }
   return false;
 }
 
 // Settings modal
-$('#btn-settings').onclick = () => {
+$('#btn-settings').addEventListener('click', () => {
   const c = cfgGet();
   $('#cfg-url').value = c.url;
   $('#cfg-key').value = c.key;
   $('#modal').style.display = '';
-};
-$('#cfg-cancel').onclick = () => $('#modal').style.display = 'none';
-$('#cfg-save').onclick = () => {
+});
+$('#cfg-cancel').addEventListener('click', () => { $('#modal').style.display = 'none'; });
+$('#cfg-save').addEventListener('click', () => {
   const u = $('#cfg-url').value.trim(), k = $('#cfg-key').value.trim();
   if (!u || !k) return toast('Enter both fields', 'err');
   localStorage.setItem('sb_url', u);
   localStorage.setItem('sb_key', k);
   if (sbInit()) { toast('Connected!', 'ok'); $('#modal').style.display = 'none'; updateStats(); }
   else toast('Connection failed', 'err');
-};
+});
 
 /* ════════════════ TOAST ════════════════ */
 function toast(msg, type = 'info') {
@@ -63,13 +66,13 @@ function showLoad(t = 'Saving…') { $('#load-text').textContent = t; $('#loadin
 function hideLoad() { $('#loading').style.display = 'none'; }
 
 /* ════════════════ NAV TABS ════════════════ */
-$$('.nav-pill').forEach(p => p.onclick = () => {
+$$('.nav-pill').forEach(p => p.addEventListener('click', () => {
   $$('.nav-pill').forEach(x => x.classList.remove('active'));
   p.classList.add('active');
   $$('.view').forEach(v => v.classList.remove('active'));
   $(`#view-${p.dataset.view}`).classList.add('active');
   if (p.dataset.view === 'search') loadRecent();
-});
+}));
 
 /* ════════════════ STEP NAV ════════════════ */
 function goStep(n) {
@@ -97,16 +100,16 @@ function goStep(n) {
 const dropZone = $('#drop-zone');
 const fileInput = $('#file-input');
 
-dropZone.onclick = () => fileInput.click();
-dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add('over'); };
-dropZone.ondragleave = () => dropZone.classList.remove('over');
-dropZone.ondrop = e => {
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => {
   e.preventDefault(); dropZone.classList.remove('over');
   const f = e.dataTransfer.files[0];
   if (f && f.type.startsWith('image/')) handleFile(f);
   else toast('Please drop an image file', 'err');
-};
-fileInput.onchange = e => { if (e.target.files[0]) handleFile(e.target.files[0]); };
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
 
 function handleFile(f) {
   S.file = f;
@@ -114,7 +117,7 @@ function handleFile(f) {
   r.onload = e => {
     S.dataUrl = e.target.result;
     $('#preview-img').src = S.dataUrl;
-    $('#file-name-display').textContent = `${f.name} — ${(f.size/1024).toFixed(1)} KB`;
+    $('#file-name-display').textContent = `${f.name} — ${(f.size / 1024).toFixed(1)} KB`;
     $('#preview-box').classList.add('show');
     dropZone.style.display = 'none';
     $('#next1').disabled = false;
@@ -123,27 +126,37 @@ function handleFile(f) {
   r.readAsDataURL(f);
 }
 
-$('#btn-remove').onclick = () => {
+$('#btn-remove').addEventListener('click', () => {
   S.file = null; S.dataUrl = null;
   $('#preview-box').classList.remove('show');
   dropZone.style.display = '';
   fileInput.value = '';
   $('#next1').disabled = true;
-};
+});
 
-$('#next1').onclick = () => { if (S.file) goStep(2); };
+$('#next1').addEventListener('click', () => { if (S.file) goStep(2); });
 
 /* ════════════════ STEP 2: NAME (VOICE) ════════════════ */
-$('#mic-name').onclick = () => {
-  if (S.listening) stopListen();
-  else startListen('name');
-};
+const micName = $('#mic-name');
+const micNameLabel = $('#mic-name-label');
 
-$('#apply-name').onclick = () => {
+micName.addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  console.log('🎤 Name mic clicked, listening:', S.listening);
+  if (S.listening && S.activeMode === 'name') {
+    stopListen();
+  } else {
+    stopListen(); // stop any existing
+    startListen('name', micName, micNameLabel);
+  }
+});
+
+$('#apply-name').addEventListener('click', () => {
   const v = $('#manual-name').value.trim();
   if (v) { setName(v); toast('Name set', 'ok'); }
-};
-$('#manual-name').onkeypress = e => { if (e.key === 'Enter') $('#apply-name').click(); };
+});
+$('#manual-name').addEventListener('keypress', e => { if (e.key === 'Enter') $('#apply-name').click(); });
 
 function setName(v) {
   S.name = v;
@@ -153,20 +166,30 @@ function setName(v) {
   $('#next2').disabled = false;
 }
 
-$('#back2').onclick = () => goStep(1);
-$('#next2').onclick = () => { if (S.name) goStep(3); };
+$('#back2').addEventListener('click', () => goStep(1));
+$('#next2').addEventListener('click', () => { if (S.name) goStep(3); });
 
 /* ════════════════ STEP 3: TOOTH (VOICE) ════════════════ */
-$('#mic-tooth').onclick = () => {
-  if (S.listening) stopListen();
-  else startListen('tooth');
-};
+const micTooth = $('#mic-tooth');
+const micToothLabel = $('#mic-tooth-label');
 
-$('#apply-tooth').onclick = () => {
+micTooth.addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  console.log('🎤 Tooth mic clicked, listening:', S.listening);
+  if (S.listening && S.activeMode === 'tooth') {
+    stopListen();
+  } else {
+    stopListen();
+    startListen('tooth', micTooth, micToothLabel);
+  }
+});
+
+$('#apply-tooth').addEventListener('click', () => {
   const v = $('#manual-tooth').value.trim();
   if (v) { setTooth(v); toast('Tooth set', 'ok'); }
-};
-$('#manual-tooth').onkeypress = e => { if (e.key === 'Enter') $('#apply-tooth').click(); };
+});
+$('#manual-tooth').addEventListener('keypress', e => { if (e.key === 'Enter') $('#apply-tooth').click(); });
 
 function setTooth(v) {
   S.tooth = v;
@@ -179,77 +202,158 @@ function setTooth(v) {
   if (tn) tn.classList.add('sel');
 }
 
-$$('.t').forEach(t => t.onclick = () => { setTooth(t.dataset.t); toast(`Tooth ${t.dataset.t} selected`, 'info'); });
+$$('.t').forEach(t => t.addEventListener('click', () => {
+  setTooth(t.dataset.t);
+  toast(`Tooth ${t.dataset.t} selected`, 'info');
+}));
 
-$('#back3').onclick = () => goStep(2);
-$('#next3').onclick = () => { if (S.tooth) goStep(4); };
+$('#back3').addEventListener('click', () => goStep(2));
+$('#next3').addEventListener('click', () => { if (S.tooth) goStep(4); });
 
 /* ════════════════ SPEECH RECOGNITION ════════════════ */
-function startListen(mode) {
+function startListen(mode, btn, lbl) {
+  // Check support
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { toast('Speech not supported — please type manually', 'err'); return; }
+  if (!SR) {
+    toast('Speech not supported in this browser — use Chrome or type manually', 'err');
+    console.error('❌ SpeechRecognition API not found');
+    return;
+  }
 
-  const r = new SR();
-  r.lang = 'en-IN';
-  r.interimResults = true;
-  r.continuous = false;
-  r.maxAlternatives = 1;
-  S.recog = r;
-  S.listening = true;
+  console.log('🎤 Starting speech recognition, mode:', mode);
 
-  const btn = mode === 'name' ? $('#mic-name') : $('#mic-tooth');
-  const lbl = mode === 'name' ? $('#mic-name-label') : $('#mic-tooth-label');
-  btn.classList.add('listening');
-  lbl.textContent = 'Listening…';
+  try {
+    const recognition = new SR();
+    recognition.lang = 'en-IN';
+    recognition.interimResults = false; // Only final results — more reliable
+    recognition.continuous = false;
+    recognition.maxAlternatives = 3;
 
-  r.onresult = ev => {
-    let txt = '';
-    for (let i = ev.resultIndex; i < ev.results.length; i++) txt += ev.results[i][0].transcript;
-    txt = txt.trim();
-    if (mode === 'name') {
-      txt = txt.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-      setName(txt);
-    } else {
-      const num = extractNum(txt);
-      setTooth(num || txt);
-    }
-  };
+    S.recog = recognition;
+    S.listening = true;
+    S.activeMode = mode;
 
-  r.onend = () => {
-    btn.classList.remove('listening');
-    lbl.textContent = 'Tap to speak again';
+    btn.classList.add('listening');
+    lbl.textContent = '🔴 Listening… speak now';
+
+    recognition.onresult = (event) => {
+      console.log('🎤 Got result:', event.results);
+      let transcript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      transcript = transcript.trim();
+      console.log('🎤 Transcript:', transcript);
+
+      if (!transcript) return;
+
+      if (mode === 'name') {
+        // Capitalize each word
+        transcript = transcript.split(' ')
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(' ');
+        setName(transcript);
+      } else {
+        const num = extractToothNum(transcript);
+        setTooth(num || transcript);
+      }
+    };
+
+    recognition.onspeechend = () => {
+      console.log('🎤 Speech ended');
+      recognition.stop();
+    };
+
+    recognition.onend = () => {
+      console.log('🎤 Recognition ended');
+      btn.classList.remove('listening');
+      lbl.textContent = 'Tap to speak again';
+      S.listening = false;
+      S.recog = null;
+      S.activeMode = null;
+
+      if (mode === 'name' && S.name) toast(`Got it: "${S.name}"`, 'ok');
+      else if (mode === 'tooth' && S.tooth) toast(`Got it: Tooth ${S.tooth}`, 'ok');
+    };
+
+    recognition.onerror = (ev) => {
+      console.error('🎤 Error:', ev.error);
+      btn.classList.remove('listening');
+      S.listening = false;
+      S.recog = null;
+      S.activeMode = null;
+
+      switch (ev.error) {
+        case 'no-speech':
+          lbl.textContent = 'No speech heard — tap to retry';
+          toast('No speech detected. Tap mic and speak clearly.', 'err');
+          break;
+        case 'not-allowed':
+        case 'service-not-allowed':
+          lbl.textContent = 'Mic blocked — check browser';
+          toast('Microphone access denied. Allow mic in your browser settings.', 'err');
+          break;
+        case 'network':
+          lbl.textContent = 'Network error — try again';
+          toast('Network error. Check your internet connection.', 'err');
+          break;
+        case 'aborted':
+          lbl.textContent = 'Tap to speak';
+          break;
+        default:
+          lbl.textContent = 'Error — tap to retry';
+          toast(`Mic error: ${ev.error}`, 'err');
+      }
+    };
+
+    recognition.start();
+    console.log('🎤 Recognition started successfully');
+
+  } catch (err) {
+    console.error('🎤 Failed to start:', err);
+    toast('Could not start microphone: ' + err.message, 'err');
     S.listening = false;
     S.recog = null;
-    if (mode === 'name' && S.name) toast(`Captured: ${S.name}`, 'ok');
-    else if (mode === 'tooth' && S.tooth) toast(`Captured: ${S.tooth}`, 'ok');
-  };
-
-  r.onerror = ev => {
     btn.classList.remove('listening');
     lbl.textContent = 'Tap to try again';
-    S.listening = false; S.recog = null;
-    if (ev.error === 'no-speech') toast('No speech detected — try again', 'err');
-    else if (ev.error === 'not-allowed') toast('Mic access denied — allow in browser settings', 'err');
-    else toast(`Error: ${ev.error}`, 'err');
-  };
-
-  r.start();
+  }
 }
 
-function stopListen() { if (S.recog) { S.recog.stop(); S.listening = false; } }
+function stopListen() {
+  if (S.recog) {
+    try { S.recog.abort(); } catch(e) {}
+    S.recog = null;
+  }
+  S.listening = false;
+  S.activeMode = null;
+  // Reset all mic buttons
+  $$('.mic-ring').forEach(b => b.classList.remove('listening'));
+}
 
-function extractNum(txt) {
-  const map = {
+function extractToothNum(txt) {
+  const wordMap = {
+    'one':1,'two':2,'three':3,'four':4,'five':5,'six':6,'seven':7,'eight':8,'nine':9,'ten':10,
     'eleven':11,'twelve':12,'thirteen':13,'fourteen':14,'fifteen':15,'sixteen':16,'seventeen':17,'eighteen':18,
-    'twenty one':21,'twenty two':22,'twenty three':23,'twenty four':24,'twenty five':25,'twenty six':26,'twenty seven':27,'twenty eight':28,
-    'thirty one':31,'thirty two':32,'thirty three':33,'thirty four':34,'thirty five':35,'thirty six':36,'thirty seven':37,'thirty eight':38,
-    'forty one':41,'forty two':42,'forty three':43,'forty four':44,'forty five':45,'forty six':46,'forty seven':47,'forty eight':48,
+    'nineteen':19,'twenty':20,'twenty one':21,'twenty two':22,'twenty three':23,'twenty four':24,
+    'twenty five':25,'twenty six':26,'twenty seven':27,'twenty eight':28,
+    'thirty':30,'thirty one':31,'thirty two':32,'thirty three':33,'thirty four':34,
+    'thirty five':35,'thirty six':36,'thirty seven':37,'thirty eight':38,
+    'forty':40,'forty one':41,'forty two':42,'forty three':43,'forty four':44,
+    'forty five':45,'forty six':46,'forty seven':47,'forty eight':48,
   };
-  const lower = txt.toLowerCase();
-  for (const [w, n] of Object.entries(map)) if (lower.includes(w)) return String(n);
-  const nums = txt.replace(/[^0-9]/g, '');
-  if (nums.length >= 2) return nums.substring(0, 2);
-  return nums || txt;
+  const lower = txt.toLowerCase().trim();
+
+  // Try word matching first
+  for (const [word, num] of Object.entries(wordMap)) {
+    if (lower.includes(word)) return String(num);
+  }
+
+  // Extract digits
+  const digits = txt.replace(/[^0-9]/g, '');
+  if (digits.length >= 2) return digits.substring(0, 2);
+  if (digits.length === 1) return digits;
+
+  return txt;
 }
 
 /* ════════════════ STEP 4: CONFIRM ════════════════ */
@@ -260,10 +364,10 @@ function fillConfirm() {
   $('#cf-date').textContent = new Date().toLocaleString('en-IN', { dateStyle: 'full', timeStyle: 'short' });
 }
 
-$('#back4').onclick = () => goStep(3);
+$('#back4').addEventListener('click', () => goStep(3));
 
 /* ════════════════ SAVE ════════════════ */
-$('#btn-save').onclick = save;
+$('#btn-save').addEventListener('click', save);
 
 async function save() {
   if (!S.db) { toast('Configure Supabase first (⚙️)', 'err'); return; }
@@ -311,12 +415,13 @@ function showSuccess(pid) {
   $$('.prog-line').forEach(l => l.classList.add('done'));
 }
 
-$('#btn-copy').onclick = () => {
+$('#btn-copy').addEventListener('click', () => {
   navigator.clipboard.writeText($('#gen-id').textContent)
-    .then(() => toast('Copied!', 'ok')).catch(() => toast('Copy failed', 'err'));
-};
-$('#btn-print').onclick = () => window.print();
-$('#btn-new').onclick = resetWiz;
+    .then(() => toast('Copied to clipboard!', 'ok'))
+    .catch(() => toast('Copy failed', 'err'));
+});
+$('#btn-print').addEventListener('click', () => window.print());
+$('#btn-new').addEventListener('click', resetWiz);
 
 function resetWiz() {
   S.file = null; S.dataUrl = null; S.name = ''; S.tooth = ''; S.step = 1;
@@ -333,15 +438,15 @@ function resetWiz() {
   $('#next3').disabled = true;
   $('#manual-tooth').value = '';
   $$('.t').forEach(t => t.classList.remove('sel'));
-  $$('.prog-step').forEach(p => p.classList.remove('active','done'));
-  $$('.prog-line').forEach(l => l.classList.remove('active','done'));
+  $$('.prog-step').forEach(p => p.classList.remove('active', 'done'));
+  $$('.prog-line').forEach(l => l.classList.remove('active', 'done'));
   $$('.step').forEach(s => { s.classList.remove('active'); s.style.display = ''; });
   goStep(1);
 }
 
 /* ════════════════ SEARCH ════════════════ */
-$('#btn-search').onclick = doSearch;
-$('#search-input').onkeypress = e => { if (e.key === 'Enter') doSearch(); };
+$('#btn-search').addEventListener('click', doSearch);
+$('#search-input').addEventListener('keypress', e => { if (e.key === 'Enter') doSearch(); });
 
 async function doSearch() {
   const q = $('#search-input').value.trim().toUpperCase();
@@ -367,13 +472,19 @@ function showResult(r) {
   $('#no-result').style.display = 'none';
 }
 
-$('#btn-print-res').onclick = () => window.print();
+$('#btn-print-res').addEventListener('click', () => window.print());
 
 async function loadRecent() {
-  if (!S.db) { $('#recent-list').innerHTML = '<p style="color:var(--t3);text-align:center;padding:1rem;font-size:.82rem">Configure Supabase to see records</p>'; return; }
+  if (!S.db) {
+    $('#recent-list').innerHTML = '<p style="color:var(--t3);text-align:center;padding:1rem;font-size:.82rem">Configure Supabase to see records</p>';
+    return;
+  }
   try {
     const { data } = await S.db.from('patients').select('patient_id,patient_name,tooth_number,created_at').order('created_at', { ascending: false }).limit(10);
-    if (!data || !data.length) { $('#recent-list').innerHTML = '<p style="color:var(--t3);text-align:center;padding:1rem;font-size:.82rem">No records yet</p>'; return; }
+    if (!data || !data.length) {
+      $('#recent-list').innerHTML = '<p style="color:var(--t3);text-align:center;padding:1rem;font-size:.82rem">No records yet</p>';
+      return;
+    }
     $('#recent-list').innerHTML = data.map(r => {
       const ini = r.patient_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
       const dt = new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' });
@@ -382,14 +493,21 @@ async function loadRecent() {
         <div class="rec-right"><div class="rec-tooth">Tooth ${r.tooth_number}</div><div class="rec-date">${dt}</div></div>
       </div>`;
     }).join('');
-    $$('.rec-item').forEach(i => i.onclick = () => { $('#search-input').value = i.dataset.pid; doSearch(); });
-  } catch { $('#recent-list').innerHTML = '<p style="color:var(--t3);text-align:center;padding:1rem;font-size:.82rem">Failed to load</p>'; }
+    $$('.rec-item').forEach(i => i.addEventListener('click', () => {
+      $('#search-input').value = i.dataset.pid;
+      doSearch();
+    }));
+  } catch {
+    $('#recent-list').innerHTML = '<p style="color:var(--t3);text-align:center;padding:1rem;font-size:.82rem">Failed to load</p>';
+  }
 }
 
 /* ════════════════ WELCOME & STATS ════════════════ */
 function updateDate() {
   const d = new Date();
-  $('#welcome-date').textContent = d.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' }) + ' • ' + d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+  const dateStr = d.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  $('#welcome-date').textContent = `${dateStr} • ${timeStr}`;
 }
 
 async function updateStats() {
@@ -397,18 +515,20 @@ async function updateStats() {
   try {
     const { count: tot } = await S.db.from('patients').select('*', { count: 'exact', head: true });
     $('#stat-total').textContent = tot ?? 0;
-    const today = new Date(); today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
     const { count: td } = await S.db.from('patients').select('*', { count: 'exact', head: true }).gte('created_at', today.toISOString());
     $('#stat-today').textContent = td ?? 0;
   } catch {}
 }
 
-/* ════════════════ INIT ════════════════ */
-document.addEventListener('DOMContentLoaded', () => {
-  const ok = sbInit();
-  if (!ok) { const c = cfgGet(); if (!c.url || !c.key) $('#modal').style.display = ''; }
-  updateDate();
-  setInterval(updateDate, 60000);
-  updateStats();
-  goStep(1);
-});
+/* ════════════════ BOOT ════════════════ */
+const ok = sbInit();
+if (!ok) { const c = cfgGet(); if (!c.url || !c.key) $('#modal').style.display = ''; }
+updateDate();
+setInterval(updateDate, 60000);
+updateStats();
+goStep(1);
+
+console.log('✅ App initialized');
+
+}); // end DOMContentLoaded
