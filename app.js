@@ -137,20 +137,26 @@ $('#btn-remove').addEventListener('click', () => {
 $('#next1').addEventListener('click', () => { if (S.file) goStep(2); });
 
 /* ════════════════ STEP 2: NAME (VOICE) ════════════════ */
-const micName = $('#mic-name');
-const micNameLabel = $('#mic-name-label');
 
-micName.addEventListener('click', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  console.log('🎤 Name mic clicked, listening:', S.listening);
-  if (S.listening && S.activeMode === 'name') {
+// Global mic click handler (called by inline onclick as failsafe)
+function handleMicClick(mode) {
+  console.log('🎤 Mic clicked! Mode:', mode, 'Listening:', S.listening);
+  const btn = mode === 'name' ? $('#mic-name') : $('#mic-tooth');
+  const lbl = mode === 'name' ? $('#mic-name-label') : $('#mic-tooth-label');
+  
+  if (S.listening && S.activeMode === mode) {
     stopListen();
   } else {
-    stopListen(); // stop any existing
-    startListen('name', micName, micNameLabel);
+    stopListen();
+    startListen(mode, btn, lbl);
   }
-});
+}
+
+// Expose globally for inline onclick fallback
+window._micClick = handleMicClick;
+
+// Also bind via addEventListener
+$('#mic-name').addEventListener('click', () => handleMicClick('name'));
 
 $('#apply-name').addEventListener('click', () => {
   const v = $('#manual-name').value.trim();
@@ -170,20 +176,8 @@ $('#back2').addEventListener('click', () => goStep(1));
 $('#next2').addEventListener('click', () => { if (S.name) goStep(3); });
 
 /* ════════════════ STEP 3: TOOTH (VOICE) ════════════════ */
-const micTooth = $('#mic-tooth');
-const micToothLabel = $('#mic-tooth-label');
 
-micTooth.addEventListener('click', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  console.log('🎤 Tooth mic clicked, listening:', S.listening);
-  if (S.listening && S.activeMode === 'tooth') {
-    stopListen();
-  } else {
-    stopListen();
-    startListen('tooth', micTooth, micToothLabel);
-  }
-});
+$('#mic-tooth').addEventListener('click', () => handleMicClick('tooth'));
 
 $('#apply-tooth').addEventListener('click', () => {
   const v = $('#manual-tooth').value.trim();
