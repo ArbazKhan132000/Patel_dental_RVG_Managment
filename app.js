@@ -293,14 +293,12 @@ async function save() {
 }
 
 async function genId() {
-  const d = new Date();
-  const ds = `${String(d.getFullYear()).slice(-2)}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
   try {
     const { data, error } = await S.db.rpc('get_next_patient_seq');
     if (error) throw error;
-    return `PDC-${ds}-${String(data).padStart(4,'0')}`;
+    return String(data).padStart(4, '0');
   } catch {
-    return `PDC-${ds}-${String(Math.floor(Math.random()*9000)+1000)}`;
+    return String(Math.floor(Math.random() * 9000) + 1000);
   }
 }
 
