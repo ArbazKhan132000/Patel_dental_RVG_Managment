@@ -122,10 +122,8 @@
           <p>Tap the mic and say the patient's full name</p>
         </div>
         <div class="voice-block">
-          <button class="mic-ring" id="mic-name" type="button">
-            <div class="mic-core">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-            </div>
+          <button class="mic-ring" id="mic-name" type="button" onclick="window._micClick && window._micClick('name')">
+            <div class="mic-core">🎤</div>
           </button>
           <div class="mic-label" id="mic-name-label">Tap to speak</div>
         </div>
@@ -133,7 +131,7 @@
           <span class="placeholder-text">Name will appear here…</span>
         </div>
         <div class="fallback-row">
-          <input type="text" class="text-field" id="manual-name" placeholder="Or type name here…" />
+          <input type="text" class="text-field" id="manual-name" placeholder="Or type name manually…" />
           <button class="btn outline small" id="apply-name">Apply</button>
         </div>
         <div class="card-foot">
@@ -149,10 +147,8 @@
           <p>Speak the tooth number or tap the chart below</p>
         </div>
         <div class="voice-block">
-          <button class="mic-ring" id="mic-tooth" type="button">
-            <div class="mic-core">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-            </div>
+          <button class="mic-ring" id="mic-tooth" type="button" onclick="window._micClick && window._micClick('tooth')">
+            <div class="mic-core">🎤</div>
           </button>
           <div class="mic-label" id="mic-tooth-label">Tap to speak</div>
         </div>
